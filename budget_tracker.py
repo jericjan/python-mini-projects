@@ -26,7 +26,16 @@ def load_budget_data(filepath):
             return data['initial_budget'], data['expenses']
     except (FileNotFoundError, json.JSONDecodeError):
         return 0, []  # Return default values if the file doesn't exist or is empty/corrupted
-#
+
+
+def delete_budget_details(budget, expenses):
+    pass
+    
+
+def edit_budget_details(budget, expenses):
+    pass
+
+
 def save_budget_data(filepath, initial_budget, expenses):
     data = {
         'initial_budget': initial_budget,
@@ -48,8 +57,10 @@ def main():
         print("\nWhat would you like to do?")
         print("1. Add an expense")
         print("2. Show budget details")
-        print("3. Exit")
-        choice = input("Enter your choice (1/2/3): ")
+        print("3. Delete budget details")
+        print("4. Edit budget details")
+        print("5. Exit")
+        choice = input("Enter your choice (1/2/3/4/5): ")
 
         if choice == "1":
             description = input("Enter expense description: ")
@@ -58,6 +69,10 @@ def main():
         elif choice == "2":
             show_budget_details(budget, expenses)
         elif choice == "3":
+            delete_budget_details(budget, expenses)
+        elif choice == "4":
+            edit_budget_details(budget, expenses)
+        elif choice == "5":
             print("Exiting Budget App. Goodbye!")
             break
         else:
