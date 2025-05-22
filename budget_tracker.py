@@ -83,8 +83,11 @@ def select_expense(expenses: list[Expense], msg: str):
     while True:
         choice = ask_for_number(msg, "int")
         if choice not in range(len(expenses)):
-            print("That's not one of the items!")
+            print("That's not one of the items!", end="")
+            move_up(1)
+            clear_line()
         else:
+            clear_line()
             break
     return choice
 
@@ -100,21 +103,25 @@ def delete_budget_details(expenses: list[Expense]):
 
 def edit_budget_details(expenses: list[Expense]):
     if len(expenses) == 0:
-        print("You have no expenses. Add one first.")    
+        print("You have no expenses. Add one first.")
         return
     choice = select_expense(expenses, "Enter the # of the item you want to edit: ")
+    print("1. Edit description")
+    print("2. Edit amount")
     while True:
-        print("1. Edit description")
-        print("2. Edit amount")
         mode = input("What do you want to edit? ")
         if mode == "1":
-            expenses[choice]['description'] = input(f"{expenses[choice]['description']} -> ")
+            clear_line()
+            expenses[choice]['description'] = input(f"{expenses[choice]['description']} -> ")            
             break
         elif mode == "2":
-            expenses[choice]['amount'] = ask_for_number(f"{expenses[choice]['amount']} -> ")
+            clear_line()
+            expenses[choice]['amount'] = ask_for_number(f"{expenses[choice]['amount']} -> ")            
             break
         else:
-            print("That's not one of the options!")
+            print("That's not one of the options!", end="")
+            move_up(1)
+            clear_line()
 
 
 def save_budget_data(filepath: str, initial_budget: float, expenses: list[Expense]):
@@ -151,28 +158,33 @@ def ask_for_number(msg: str, type: str = 'float'):
             else:
                 raise ValueError("Invalid `type` value")
             clear_line()
-            break
+            return out
         except ValueError:
-            print("That's not a number!================================================================", end="")
+            clear_line()
+            print("That's not a number!", end="")
             move_up(1)
             clear_line()
-    return out
 
 
 def yes_or_no(msg: str):
     while True:
         choice = input(msg + " (y/n) ")
         if choice == "y":
+            clear_line()
             return True
         elif choice == "n":
+            clear_line()
             return False
         else:
-            print("That's not one of the options!")
+            print("That's not one of the options!", end="")
+            move_up(1)
+            clear_line()
 
 
 def clear_screen():
     """Clears screen and moves cursor back to top"""
     print("\x1b[2J\x1b[H", end="")
+
 
 def clear_line():
     print("\x1b[2K\r", end="")
@@ -183,6 +195,7 @@ def move_up(times: int):
 
 
 def main():
+    clear_screen()
     print("Welcome to the Budget App")
     filepath = 'budget_data.json'  # Define the path to your JSON file
     initial_budget, expenses = load_budget_data(filepath)
@@ -214,7 +227,8 @@ def main():
         elif choice == "4":
             edit_budget_details(expenses)
         elif choice == "5":
-            initial_budget = ask_for_number(f"Your current budget is: {initial_budget}\nEnter your new budget: ")
+            print(f"Your current budget is: {initial_budget}")
+            initial_budget = ask_for_number("Enter your new budget: ")
         elif choice == "6":
             save_budget_data(filepath, initial_budget, expenses)
             print("Saving changes and exiting Budget App. Goodbye!")

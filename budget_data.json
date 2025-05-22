@@ -1,4 +1,9 @@
 {
-    "initial_budget": 130.0,
-    "expenses": []
+    "initial_budget": 140.0,
+    "expenses": [
+        {
+            "description": "1",
+            "amount": 1.0
+        }
+    ]
 }
