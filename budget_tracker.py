@@ -1,17 +1,27 @@
 
 import json
+from typing import Any, TypedDict
 
-def add_expense(expenses, description, amount):
+
+class Expense(TypedDict):
+    description: str
+    amount: float
+
+
+def add_expense(expenses: list[Expense], description: str, amount: float):
     expenses.append({"description": description, "amount": amount})
     print(f"Added expense: {description}, Amount: {amount}")
 
-def get_total_expenses(expenses):
+
+def get_total_expenses(expenses: list[Expense]):
     return sum(expense['amount'] for expense in expenses)
 
-def get_balance(budget, expenses):
+
+def get_balance(budget: int, expenses: list[Expense]):
     return budget - get_total_expenses(expenses)
 
-def show_budget_details(budget, expenses):
+
+def show_budget_details(budget: int, expenses: list[Expense]):
     print(f"Total Budget: {budget}")
     print("Expenses:")
     for expense in expenses:
@@ -19,7 +29,8 @@ def show_budget_details(budget, expenses):
     print(f"Total Spent: {get_total_expenses(expenses)}")
     print(f"Remaining Budget: {get_balance(budget, expenses)}")
 
-def load_budget_data(filepath):
+
+def load_budget_data(filepath: str) -> tuple[int, list[Expense]]:
     try:
         with open(filepath, 'r') as file:
             data = json.load(file)
@@ -28,16 +39,16 @@ def load_budget_data(filepath):
         return 0, []  # Return default values if the file doesn't exist or is empty/corrupted
 
 
-def delete_budget_details(budget, expenses):
-    pass
-    
-
-def edit_budget_details(budget, expenses):
+def delete_budget_details(budget: int, expenses: list[Expense]):
     pass
 
 
-def save_budget_data(filepath, initial_budget, expenses):
-    data = {
+def edit_budget_details(budget: int, expenses: list[Expense]):
+    pass
+
+
+def save_budget_data(filepath: str, initial_budget: int, expenses: list[Expense]):
+    data: dict[str, Any] = {
         'initial_budget': initial_budget,
         'expenses': expenses
     }
@@ -48,10 +59,9 @@ def save_budget_data(filepath, initial_budget, expenses):
 def main():
     print("Welcome to the Budget App")
     initial_budget = float(input("Please enter your initial budget: "))
-    # filepath = 'budget_data.json'  # Define the path to your JSON file
-    # initial_budget, expenses = load_budget_data(filepath)
+    filepath = 'budget_data.json'  # Define the path to your JSON file
+    initial_budget, expenses = load_budget_data(filepath)
     budget = initial_budget
-    expenses = []
 
     while True:
         print("\nWhat would you like to do?")
@@ -77,6 +87,7 @@ def main():
             break
         else:
             print("Invalid choice, please choose again.")
+
 
 if __name__ == "__main__":
     main()
