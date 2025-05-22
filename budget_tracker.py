@@ -2,6 +2,18 @@
 import json
 from typing import Any, Callable, Literal, TypedDict, overload
 import re
+from enum import Enum
+
+
+class Color(Enum):
+    RED = 31
+    GREEN = 32
+    YELLOW = 33
+    BLUE = 34
+    PINK = 35
+    CYAN = 36
+    WHITE = 37
+    CLEAR = 0
 
 
 class Expense(TypedDict):
@@ -11,6 +23,10 @@ class Expense(TypedDict):
 
 def strip_ansi(txt: str):
     return re.sub(r'(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]', '', txt)
+
+
+def color_to_ansi(color: Color):
+    return f"\x1b[{color}m"
 
 
 class TextBoxer:
@@ -57,13 +73,18 @@ def get_balance(budget: float, expenses: list[Expense]):
 
 def show_budget_details(budget: float, expenses: list[Expense]):
     boxer = TextBoxer()
-    boxer += f"\x1b[33mTotal Budget: {budget}\x1b[0m"
+    boxer += color_to_ansi(Color.YELLOW) + f"Total Budget: {budget}" + color_to_ansi(Color.CLEAR)
     boxer += "Expenses:"
     for expense in expenses:
         boxer += f"- {expense['description']}: {expense['amount']}"
     boxer += f"Total Spent: {get_total_expenses(expenses)}"
     balance = get_balance(budget, expenses)
-    boxer += f"Remaining Budget: \x1b[3{1 if balance < 0 else 2}m{balance}\x1b[0m"
+    boxer += (
+        "Remaining Budget: "
+        + (color_to_ansi(Color.RED) if balance < 0 else color_to_ansi(Color.GREEN))
+        + str(balance)
+        + color_to_ansi(Color.CLEAR)
+    )
     boxer.print()
 
 
@@ -76,7 +97,7 @@ def load_budget_data(filepath: str) -> tuple[float, list[Expense]]:
         return 0, []  # Return default values if the file doesn't exist or is empty/corrupted
 
 
-def select_expense(expenses: list[Expense], msg: str):
+def select_expense(expenses: list[Expense], msg: str, color: Color):
     """Returns an index of the expense you want to delete"""
     for idx, expense in enumerate(expenses):
         print(f"{idx} - {expense['description']}: {expense['amount']}")
@@ -89,6 +110,16 @@ def select_expense(expenses: list[Expense], msg: str):
         else:
             clear_line()
             break
+
+    save_pos()
+    move_up(1 + len(expenses) - choice)
+    expense = expenses[choice]
+    print(f"\r\x1b[{color}m"
+          f"{choice} - {expense['description']}: {expense['amount']}",
+          end="")
+    restore_pos()
+    reset_colors()
+
     return choice
 
 
@@ -96,8 +127,10 @@ def delete_budget_details(expenses: list[Expense]):
     if len(expenses) == 0:
         print("You have no expenses. Add one first.")
         return
-    choice = select_expense(expenses, "Enter the # of the item you want to delete: ")
+    choice = select_expense(expenses, "Enter the # of the item you want to delete: ", Color.RED)
+
     deleted = expenses.pop(choice)
+
     print(f"\"{deleted['description']} - {deleted['amount']}\" has been deleted.")
 
 
@@ -105,18 +138,18 @@ def edit_budget_details(expenses: list[Expense]):
     if len(expenses) == 0:
         print("You have no expenses. Add one first.")
         return
-    choice = select_expense(expenses, "Enter the # of the item you want to edit: ")
+    choice = select_expense(expenses, "Enter the # of the item you want to edit: ", Color.YELLOW)
     print("1. Edit description")
     print("2. Edit amount")
     while True:
         mode = input("What do you want to edit? ")
         if mode == "1":
             clear_line()
-            expenses[choice]['description'] = input(f"{expenses[choice]['description']} -> ")            
+            expenses[choice]['description'] = input(f"{expenses[choice]['description']} -> ")
             break
         elif mode == "2":
             clear_line()
-            expenses[choice]['amount'] = ask_for_number(f"{expenses[choice]['amount']} -> ")            
+            expenses[choice]['amount'] = ask_for_number(f"{expenses[choice]['amount']} -> ")
             break
         else:
             print("That's not one of the options!", end="")
@@ -192,6 +225,18 @@ def clear_line():
 
 def move_up(times: int):
     print(f"\x1b[{times}A", end="")  # Moves up
+
+
+def save_pos():
+    print("\x1b[s", end="")
+
+
+def restore_pos():
+    print("\x1b[u", end="")
+
+
+def reset_colors():
+    print(color_to_ansi(Color.CLEAR), end="")
 
 
 def main():
