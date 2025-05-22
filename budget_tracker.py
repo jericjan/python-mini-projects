@@ -26,7 +26,7 @@ def strip_ansi(txt: str):
 
 
 def color_to_ansi(color: Color):
-    return f"\x1b[{color}m"
+    return f"\x1b[{color.value}m"
 
 
 class TextBoxer:
@@ -97,6 +97,24 @@ def load_budget_data(filepath: str) -> tuple[float, list[Expense]]:
         return 0, []  # Return default values if the file doesn't exist or is empty/corrupted
 
 
+def highlight_choice(choice_count: int, selected_idx: int, selected_txt: str, color: Color):
+    """Highlights a choice in a specific color
+
+    Args:
+        choice_count (int): How many choice there are
+        selected_idx (int): 0-indexed index of the choice
+        selected_txt (str): The text content of the choice
+        color (Color): Color of the highlight
+    """
+    save_pos()
+    move_up(1 + choice_count - selected_idx)
+    print(f"\r{color_to_ansi(color)}"
+          + selected_txt,
+          end="")
+    restore_pos()
+    reset_colors()
+
+
 def select_expense(expenses: list[Expense], msg: str, color: Color):
     """Returns an index of the expense you want to delete"""
     for idx, expense in enumerate(expenses):
@@ -111,14 +129,14 @@ def select_expense(expenses: list[Expense], msg: str, color: Color):
             clear_line()
             break
 
-    save_pos()
-    move_up(1 + len(expenses) - choice)
+    # Color highlighting
     expense = expenses[choice]
-    print(f"\r\x1b[{color}m"
-          f"{choice} - {expense['description']}: {expense['amount']}",
-          end="")
-    restore_pos()
-    reset_colors()
+    highlight_choice(
+        len(expenses),
+        choice,
+        f"{choice} - {expense['description']}: {expense['amount']} <",
+        color
+    )
 
     return choice
 
@@ -139,10 +157,25 @@ def edit_budget_details(expenses: list[Expense]):
         print("You have no expenses. Add one first.")
         return
     choice = select_expense(expenses, "Enter the # of the item you want to edit: ", Color.YELLOW)
-    print("1. Edit description")
-    print("2. Edit amount")
+
+    options = [
+        "1. Edit description",
+        "2. Edit amount"
+    ]
+    for x in options:
+        print(x)
     while True:
         mode = input("What do you want to edit? ")
+
+        if mode.isnumeric() and int(mode) in range(1, len(options) + 1):
+            int_mode = int(mode) - 1  # 1-index to 0-index
+            highlight_choice(
+                len(options),
+                int_mode,
+                options[int_mode] + " <",
+                Color.YELLOW
+            )
+
         if mode == "1":
             clear_line()
             expenses[choice]['description'] = input(f"{expenses[choice]['description']} -> ")
@@ -247,9 +280,11 @@ def main():
     if initial_budget == 0:
         initial_budget = ask_for_number("Please enter your initial budget: ")
 
+    last_selection = 0
+
     while True:
         menu_items = [
-            "\n",
+            "\n",  # Input message goes here
             "1. Add an expense",
             "2. Show budget details",
             "3. Delete an expense",
@@ -257,12 +292,17 @@ def main():
             "5. Edit budget",
             "6. Exit and Save"
         ]
+        menu_items[last_selection] = color_to_ansi(Color.YELLOW) + f"{menu_items[last_selection]} <" + color_to_ansi(Color.CLEAR)
         for x in menu_items:
             print(x)
 
         move_up(len(menu_items))
         choice = input("Enter the # your choice: ")
         clear_screen()
+
+        if choice.isnumeric() and int(choice) in range(len(menu_items)):
+            last_selection = int(choice)
+
         if choice == "1":
             add_expense(initial_budget, expenses)
         elif choice == "2":
