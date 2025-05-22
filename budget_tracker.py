@@ -1,12 +1,29 @@
 
 import json
-from typing import Any, TypedDict
-
+from typing import Any, Callable, Literal, TypedDict, overload
+import re
 
 class Expense(TypedDict):
     description: str
     amount: float
 
+
+class TextBoxer:
+    def __init__(self, lines: list[str] = []):
+        self.lines: list[str] = lines
+
+    def __add__(self, other: str):
+        return TextBoxer(self.lines + [other])
+
+    def print(self):
+        get_len: Callable[[str], int] = lambda x: len(x)
+        max_width = max(map(get_len, self.lines))
+        print("█" * (max_width + 4))
+        print("█ " + " " * max_width + " █")
+        for line in self.lines:
+            print("█ " + line.ljust(max_width) + " █")
+        print("█ " + " " * max_width + " █")
+        print("█" * (max_width + 4))
 
 def add_expense(expenses: list[Expense], description: str, amount: float):
     expenses.append({"description": description, "amount": amount})
@@ -17,20 +34,22 @@ def get_total_expenses(expenses: list[Expense]):
     return sum(expense['amount'] for expense in expenses)
 
 
-def get_balance(budget: int, expenses: list[Expense]):
+def get_balance(budget: float, expenses: list[Expense]):
     return budget - get_total_expenses(expenses)
 
 
-def show_budget_details(budget: int, expenses: list[Expense]):
-    print(f"Total Budget: {budget}")
-    print("Expenses:")
+def show_budget_details(budget: float, expenses: list[Expense]):
+    boxer = TextBoxer()
+    boxer += f"Total Budget: {budget}"
+    boxer += "Expenses:"
     for expense in expenses:
-        print(f"- {expense['description']}: {expense['amount']}")
-    print(f"Total Spent: {get_total_expenses(expenses)}")
-    print(f"Remaining Budget: {get_balance(budget, expenses)}")
+        boxer += f"- {expense['description']}: {expense['amount']}"
+    boxer += f"Total Spent: {get_total_expenses(expenses)}"
+    boxer += f"Remaining Budget: \x1b[31m{get_balance(budget, expenses)}\x1b[0m"
+    boxer.print()
 
 
-def load_budget_data(filepath: str) -> tuple[int, list[Expense]]:
+def load_budget_data(filepath: str) -> tuple[float, list[Expense]]:
     try:
         with open(filepath, 'r') as file:
             data = json.load(file)
@@ -39,15 +58,41 @@ def load_budget_data(filepath: str) -> tuple[int, list[Expense]]:
         return 0, []  # Return default values if the file doesn't exist or is empty/corrupted
 
 
-def delete_budget_details(budget: int, expenses: list[Expense]):
-    pass
+def select_expense(expenses: list[Expense], msg: str):
+    """Returns an index of the expense you want to delete"""
+    for idx, expense in enumerate(expenses):
+        print(f"{idx} - {expense['description']}: {expense['amount']}")
+    while True:
+        choice = ask_for_number(msg, "int")
+        if choice not in range(len(expenses)):
+            print("That's not one of the items!")
+        else:
+            break
+    return choice
+
+def delete_budget_details(expenses: list[Expense]):
+    choice = select_expense(expenses, "Enter the # of the item you want to delete: ")
+    deleted = expenses.pop(choice)
+    print(f"\"{deleted['description']} - {deleted['amount']}\" has been deleted.")
+
+def edit_budget_details(expenses: list[Expense]):
+    choice = select_expense(expenses, "Enter the # of the item you want to edit: ")
+    while True:
+        print("1. Edit description")
+        print("2. Edit amount")
+        mode = input("What do you want to edit? ")
+        if mode == "1":
+            expenses[choice]['description'] = input(f"{expenses[choice]['description']} -> ")
+            break
+        elif mode == "2":
+            expenses[choice]['amount'] = ask_for_number(f"{expenses[choice]['amount']} -> ")
+            break
+        else:
+            print("That's not one of the options!")
 
 
-def edit_budget_details(budget: int, expenses: list[Expense]):
-    pass
 
-
-def save_budget_data(filepath: str, initial_budget: int, expenses: list[Expense]):
+def save_budget_data(filepath: str, initial_budget: float, expenses: list[Expense]):
     data: dict[str, Any] = {
         'initial_budget': initial_budget,
         'expenses': expenses
@@ -56,34 +101,73 @@ def save_budget_data(filepath: str, initial_budget: int, expenses: list[Expense]
         json.dump(data, file, indent=4)
 
 
+@overload
+def ask_for_number(msg: str, type: Literal['float']) -> float:
+    ...
+
+
+@overload
+def ask_for_number(msg: str, type: Literal['int']) -> int:
+    ...
+
+
+@overload
+def ask_for_number(msg: str) -> float:
+    ...
+
+
+def ask_for_number(msg: str, type: str = 'float'):
+    while True:
+        try:
+            if type == "float":
+                out = float(input(msg))
+            elif type == "int":
+                out = int(input(msg))
+            else:
+                raise ValueError("Invalid `type` value")
+            break
+        except ValueError:
+            print("That's not a number!")
+    return out
+
+
 def main():
     print("Welcome to the Budget App")
-    initial_budget = float(input("Please enter your initial budget: "))
     filepath = 'budget_data.json'  # Define the path to your JSON file
     initial_budget, expenses = load_budget_data(filepath)
-    budget = initial_budget
+    if initial_budget == 0:
+        initial_budget = ask_for_number("Please enter your initial budget: ")
 
     while True:
-        print("\nWhat would you like to do?")
-        print("1. Add an expense")
-        print("2. Show budget details")
-        print("3. Delete budget details")
-        print("4. Edit budget details")
-        print("5. Exit")
+        menu_items = [
+            "\n",
+            "1. Add an expense",
+            "2. Show budget details",
+            "3. Delete an expense",
+            "4. Edit an expense",
+            "5. Edit budget",
+            "6. Exit and Save"
+        ]
+        for x in menu_items:
+            print(x)
+        print(f"\x1b[{len(menu_items) + 1}A")  # Moves up
         choice = input("Enter your choice (1/2/3/4/5): ")
-
+        print("\x1b[2J\x1b[H")  # Clears screen and moves cursor back to top
         if choice == "1":
             description = input("Enter expense description: ")
-            amount = float(input("Enter expense amount: "))
+            amount = ask_for_number("Enter expense amount: ")
             add_expense(expenses, description, amount)
         elif choice == "2":
-            show_budget_details(budget, expenses)
+            show_budget_details(initial_budget, expenses)
         elif choice == "3":
-            delete_budget_details(budget, expenses)
+            delete_budget_details(expenses)
         elif choice == "4":
-            edit_budget_details(budget, expenses)
+            edit_budget_details(expenses)
         elif choice == "5":
-            print("Exiting Budget App. Goodbye!")
+            initial_budget = ask_for_number(f"Your current budget is: {initial_budget}\nEnter your new budget: ")
+        elif choice == "6":
+            save_budget_data(filepath, initial_budget, expenses)
+            print("Saving changes and exiting Budget App. Goodbye!")
             break
         else:
             print("Invalid choice, please choose again.")
