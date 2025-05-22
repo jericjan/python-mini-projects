@@ -3,9 +3,14 @@ import json
 from typing import Any, Callable, Literal, TypedDict, overload
 import re
 
+
 class Expense(TypedDict):
     description: str
     amount: float
+
+
+def strip_ansi(txt: str):
+    return re.sub(r'(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]', '', txt)
 
 
 class TextBoxer:
@@ -16,16 +21,28 @@ class TextBoxer:
         return TextBoxer(self.lines + [other])
 
     def print(self):
-        get_len: Callable[[str], int] = lambda x: len(x)
+        get_len: Callable[[str], int] = lambda x: len(strip_ansi(x))
         max_width = max(map(get_len, self.lines))
         print("█" * (max_width + 4))
         print("█ " + " " * max_width + " █")
         for line in self.lines:
-            print("█ " + line.ljust(max_width) + " █")
+            stripped_len = len(strip_ansi(line))
+            print("█ " + line + " " * (max_width - stripped_len) + " █")
         print("█ " + " " * max_width + " █")
         print("█" * (max_width + 4))
 
-def add_expense(expenses: list[Expense], description: str, amount: float):
+
+def add_expense(budget: float, expenses: list[Expense]):
+    if get_balance(budget, expenses) < 0:
+        if yes_or_no("You are already over the budget. Continue?") is False:
+            return
+
+    description = input("Enter expense description: ")
+    amount = ask_for_number("Enter expense amount: ")
+
+    if (get_balance(budget, expenses) - amount) < 0:
+        if yes_or_no("Adding this will put you over the budget. Continue?") is False:
+            return
     expenses.append({"description": description, "amount": amount})
     print(f"Added expense: {description}, Amount: {amount}")
 
@@ -40,12 +57,13 @@ def get_balance(budget: float, expenses: list[Expense]):
 
 def show_budget_details(budget: float, expenses: list[Expense]):
     boxer = TextBoxer()
-    boxer += f"Total Budget: {budget}"
+    boxer += f"\x1b[33mTotal Budget: {budget}\x1b[0m"
     boxer += "Expenses:"
     for expense in expenses:
         boxer += f"- {expense['description']}: {expense['amount']}"
     boxer += f"Total Spent: {get_total_expenses(expenses)}"
-    boxer += f"Remaining Budget: \x1b[31m{get_balance(budget, expenses)}\x1b[0m"
+    balance = get_balance(budget, expenses)
+    boxer += f"Remaining Budget: \x1b[3{1 if balance < 0 else 2}m{balance}\x1b[0m"
     boxer.print()
 
 
@@ -70,10 +88,12 @@ def select_expense(expenses: list[Expense], msg: str):
             break
     return choice
 
+
 def delete_budget_details(expenses: list[Expense]):
     choice = select_expense(expenses, "Enter the # of the item you want to delete: ")
     deleted = expenses.pop(choice)
     print(f"\"{deleted['description']} - {deleted['amount']}\" has been deleted.")
+
 
 def edit_budget_details(expenses: list[Expense]):
     choice = select_expense(expenses, "Enter the # of the item you want to edit: ")
@@ -89,7 +109,6 @@ def edit_budget_details(expenses: list[Expense]):
             break
         else:
             print("That's not one of the options!")
-
 
 
 def save_budget_data(filepath: str, initial_budget: float, expenses: list[Expense]):
@@ -131,6 +150,17 @@ def ask_for_number(msg: str, type: str = 'float'):
     return out
 
 
+def yes_or_no(msg: str):
+    while True:
+        choice = input(msg + " (y/n) ")
+        if choice == "y":
+            return True
+        elif choice == "n":
+            return False
+        else:
+            print("That's not one of the options!")
+
+
 def main():
     print("Welcome to the Budget App")
     filepath = 'budget_data.json'  # Define the path to your JSON file
@@ -151,12 +181,10 @@ def main():
         for x in menu_items:
             print(x)
         print(f"\x1b[{len(menu_items) + 1}A")  # Moves up
-        choice = input("Enter your choice (1/2/3/4/5): ")
+        choice = input("Enter the # your choice: ")
         print("\x1b[2J\x1b[H")  # Clears screen and moves cursor back to top
         if choice == "1":
-            description = input("Enter expense description: ")
-            amount = ask_for_number("Enter expense amount: ")
-            add_expense(expenses, description, amount)
+            add_expense(initial_budget, expenses)
         elif choice == "2":
             show_budget_details(initial_budget, expenses)
         elif choice == "3":

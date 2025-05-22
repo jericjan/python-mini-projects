@@ -2,12 +2,8 @@
     "initial_budget": 130.0,
     "expenses": [
         {
-            "description": "Banana",
-            "amount": 10000.0
-        },
-        {
-            "description": "banana2",
-            "amount": 1000.0
+            "description": "balls",
+            "amount": 140.0
         }
     ]
 }
