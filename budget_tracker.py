@@ -38,7 +38,7 @@ def add_expense(budget: float, expenses: list[Expense]):
             return
 
     description = input("Enter expense description: ")
-    amount = ask_for_number("Enter expense amount: ")
+    amount = ask_for_number(f"Enter expense amount (You have {get_balance(budget, expenses)} balance left): ")
 
     if (get_balance(budget, expenses) - amount) < 0:
         if yes_or_no("Adding this will put you over the budget. Continue?") is False:
@@ -90,12 +90,18 @@ def select_expense(expenses: list[Expense], msg: str):
 
 
 def delete_budget_details(expenses: list[Expense]):
+    if len(expenses) == 0:
+        print("You have no expenses. Add one first.")
+        return
     choice = select_expense(expenses, "Enter the # of the item you want to delete: ")
     deleted = expenses.pop(choice)
     print(f"\"{deleted['description']} - {deleted['amount']}\" has been deleted.")
 
 
 def edit_budget_details(expenses: list[Expense]):
+    if len(expenses) == 0:
+        print("You have no expenses. Add one first.")    
+        return
     choice = select_expense(expenses, "Enter the # of the item you want to edit: ")
     while True:
         print("1. Edit description")
@@ -144,9 +150,12 @@ def ask_for_number(msg: str, type: str = 'float'):
                 out = int(input(msg))
             else:
                 raise ValueError("Invalid `type` value")
+            clear_line()
             break
         except ValueError:
-            print("That's not a number!")
+            print("That's not a number!================================================================", end="")
+            move_up(1)
+            clear_line()
     return out
 
 
@@ -159,6 +168,18 @@ def yes_or_no(msg: str):
             return False
         else:
             print("That's not one of the options!")
+
+
+def clear_screen():
+    """Clears screen and moves cursor back to top"""
+    print("\x1b[2J\x1b[H", end="")
+
+def clear_line():
+    print("\x1b[2K\r", end="")
+
+
+def move_up(times: int):
+    print(f"\x1b[{times}A", end="")  # Moves up
 
 
 def main():
@@ -180,9 +201,10 @@ def main():
         ]
         for x in menu_items:
             print(x)
-        print(f"\x1b[{len(menu_items) + 1}A")  # Moves up
+
+        move_up(len(menu_items))
         choice = input("Enter the # your choice: ")
-        print("\x1b[2J\x1b[H")  # Clears screen and moves cursor back to top
+        clear_screen()
         if choice == "1":
             add_expense(initial_budget, expenses)
         elif choice == "2":
